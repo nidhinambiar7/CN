@@ -1,0 +1,59 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <string.h>
+#include <unistd.h>
+
+int main(int argc, char *argv[])
+{
+    int sockfd, newsockfd, portno, len, n;
+    char buffer[256], c[2000], cc[20000];
+    struct sockaddr_in serv, cli;
+    FILE *fd;
+
+    if (argc < 2) {
+        printf("Error: No port number provided.\nUsage:\n./server portno\n");
+        exit(1);
+    }
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
+    portno = atoi(argv[1]);
+    serv.sin_family = AF_INET;
+    serv.sin_addr.s_addr = INADDR_ANY;
+    serv.sin_port = htons(portno);
+
+    bind(sockfd, (struct sockaddr *)&serv, sizeof(serv));
+    listen(sockfd, 10);
+    len = sizeof(cli);
+
+    printf("Server: Waiting for connection\n");
+    newsockfd = accept(sockfd, (struct sockaddr *)&cli, &len);
+
+    bzero(buffer, 255);
+    n = read(newsockfd, buffer, 255);
+    printf("Server received: %s\n", buffer);
+
+    if ((fd = fopen(buffer, "r")) != NULL) {
+        printf("Server: %s found. Opening and reading..\nReading complete.\n", buffer);
+        fgets(cc, 2000, fd);
+        while (!feof(fd)) {
+            fgets(c, 2000, fd);
+            strcat(cc, c);
+        }
+        n = write(newsockfd, cc, strlen(cc));
+        if (n < 0)
+            printf("Error writing to socket\n");
+        printf("Transfer complete\n");
+    } else {
+        printf("Server: File not found\n");
+        n = write(newsockfd, "file not found", 15);
+        if (n < 0)
+            printf("Error: Writing to socket..\n");
+    }
+
+    return 0;
+}
